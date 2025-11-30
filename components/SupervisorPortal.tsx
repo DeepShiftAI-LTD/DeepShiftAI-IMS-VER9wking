@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { User, LogEntry, Task, TaskStatus, LogStatus, TaskPriority, Report, Goal, Resource, GoalStatus, Evaluation, EvaluationType, FeedbackType, TaskFeedback, Message, Meeting, Role, Skill, SkillAssessment, Notification, NotificationType, Badge, UserBadge, LeaveRequest, LeaveStatus, SiteVisit, AttendanceException } from '../types';
 import { Button, Card, StatusBadge, ScoreBar, PriorityBadge, FeedbackBadge } from './UI';
@@ -54,7 +53,6 @@ interface SupervisorPortalProps {
   onDeleteAttendanceException: (id: string) => void;
 }
 
-// ... (Rest of LogReviewCard and ReportPreview components remains unchanged)
 const LogReviewCard: React.FC<{
     log: LogEntry;
     student?: User;
@@ -100,50 +98,43 @@ const LogReviewCard: React.FC<{
           <StatusBadge status={log.status} />
         </div>
   
-        <div className="bg-slate-50 p-4 rounded-lg text-slate-700 text-sm mb-3 relative">
-            <div 
-                className={`transition-all duration-500 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[800px]' : 'max-h-16'}`}
-            >
-                <p className={isExpanded ? '' : 'line-clamp-2'}>
-                    {log.activityDescription}
-                </p>
-
-                {log.supervisorComment && (
-                    <div className={`mt-4 pt-4 border-t border-slate-200 transition-opacity duration-500 delay-100 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-                        <div className="p-3 bg-indigo-50 text-indigo-800 rounded-lg border border-indigo-100">
-                            <span className="font-bold block text-xs uppercase tracking-wider mb-1 text-indigo-500">Supervisor Feedback</span>
-                            {log.supervisorComment}
-                        </div>
-                    </div>
-                )}
-            </div>
-            
-            {!isExpanded && (
-                <div 
-                    className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-50 to-transparent rounded-b-lg pointer-events-none"
-                />
-            )}
-        </div>
-  
-        {log.challenges && (
-          <div className="mb-3 text-sm text-rose-600 bg-rose-50 p-3 rounded-lg border border-rose-100">
-            <span className="font-bold block text-xs uppercase tracking-wider mb-1 text-rose-400">Blockers / Challenges</span>
-            {log.challenges}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between mt-2 pt-3 border-t border-slate-100">
-            <button 
+        <div className="bg-slate-50 p-4 rounded-lg text-slate-700 text-sm mb-3">
+             <p className={isExpanded ? '' : 'line-clamp-2'}>
+                 {log.activityDescription}
+             </p>
+             <button 
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 mt-2 flex items-center gap-1.5"
             >
                 {isExpanded ? (
                     <>Show Less <ChevronUp size={14} /></>
                 ) : (
-                    <>View Details <ChevronDown size={14} /></>
+                    <>Show More <ChevronDown size={14} /></>
                 )}
             </button>
+        </div>
+  
+        {log.challenges && (
+          <div className="mb-3 text-sm text-rose-700 bg-rose-50 p-3 rounded-lg border border-rose-100 flex items-start gap-2">
+            <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+            <div>
+                <span className="font-bold block text-xs uppercase tracking-wider mb-1 text-rose-500">Blockers / Challenges</span>
+                {log.challenges}
+            </div>
+          </div>
+        )}
 
+        {log.supervisorComment && (
+            <div className="mb-3 text-sm text-indigo-700 bg-indigo-50 p-3 rounded-lg border border-indigo-100 flex items-start gap-2">
+                <MessageSquare size={16} className="mt-0.5 flex-shrink-0" />
+                <div>
+                    <span className="font-bold block text-xs uppercase tracking-wider mb-1 text-indigo-500">Supervisor Feedback</span>
+                    {log.supervisorComment}
+                </div>
+            </div>
+        )}
+
+        <div className="flex items-center justify-end mt-2 pt-3 border-t border-slate-100">
             {log.status === LogStatus.PENDING && !isRejecting && (
                 <PermissionGuard user={reviewer} permission={Permission.APPROVE_LOGS} fallback={
                      <span className="text-xs text-slate-400 italic flex items-center gap-1"><Lock size={10} /> Approval locked</span>
