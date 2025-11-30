@@ -1,7 +1,5 @@
-
-
 import React, { useState, useMemo } from 'react';
-import { User, LogEntry, Role, Task, Resource } from '../types';
+import { User, LogEntry, Role, Task, Resource, UserStatus } from '../types';
 import { Card, Button, StatusBadge } from './UI';
 import { PermissionGuard } from './PermissionGuard';
 import { Permission } from '../utils/permissions';
@@ -20,7 +18,9 @@ import {
   GraduationCap,
   Loader2,
   FileText,
-  UploadCloud
+  UploadCloud,
+  Check,
+  X
 } from 'lucide-react';
 
 interface AdminPortalProps {
@@ -29,10 +29,11 @@ interface AdminPortalProps {
   logs: LogEntry[];
   tasks: Task[];
   resources: Resource[];
-  onAddUser: (user: Omit<User, 'id'>) => Promise<void>;
+  onAddUser: (user: Omit<User, 'id' | 'status'>) => Promise<void>;
   onUpdateUser: (user: User) => void;
   onDeleteUser: (userId: string) => void;
   onAddResource: (resource: Omit<Resource, 'id' | 'uploadDate' | 'uploadedBy'>) => void;
+  onApproveUser: (userId: string, status: UserStatus) => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({ 
@@ -44,7 +45,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onAddUser, 
   onUpdateUser, 
   onDeleteUser,
-  onAddResource
+  onAddResource,
+  onApproveUser
 }) => {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'USERS' | 'RESOURCES' | 'SETTINGS'>('DASHBOARD');
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,11 +74,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   // Derived Statistics
   const stats = useMemo(() => {
-    const students = users.filter(u => u.role === Role.STUDENT);
-    const supervisors = users.filter(u => u.role === Role.SUPERVISOR);
+    const students = users.filter(u => u.role === Role.STUDENT && u.status === UserStatus.ACTIVE);
+    const supervisors = users.filter(u => u.role === Role.SUPERVISOR && u.status === UserStatus.ACTIVE);
     const admins = users.filter(u => u.role === Role.ADMIN);
     const totalLogs = logs.length;
     const completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
+    const pendingUsers = users.filter(u => u.status === UserStatus.PENDING);
 
     return {
       totalUsers: users.length,
@@ -84,14 +87,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       supervisorCount: supervisors.length,
       adminCount: admins.length,
       totalLogs,
-      completedTasks
+      completedTasks,
+      pendingUsers
     };
   }, [users, logs, tasks]);
 
   const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    (u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    u.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    u.status !== UserStatus.PENDING // Filter out pending from main list if shown separately, or keep them. Let's keep them but sorted.
+  ).sort((a,b) => (a.status === UserStatus.PENDING ? -1 : 1));
 
   const handleOpenUserModal = (user?: User) => {
     if (user) {
@@ -298,6 +303,44 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </PermissionGuard>
             </div>
 
+            {/* Pending Approvals Section */}
+            {stats.pendingUsers.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
+                    <h3 className="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2">
+                        <AlertCircle className="text-amber-600" /> Pending Approval Requests ({stats.pendingUsers.length})
+                    </h3>
+                    <div className="space-y-3">
+                        {stats.pendingUsers.map(user => (
+                            <div key={user.id} className="bg-white p-4 rounded-lg shadow-sm border border-amber-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <img src={user.avatar} alt="" className="w-10 h-10 rounded-full bg-slate-200" />
+                                    <div>
+                                        <div className="font-bold text-slate-800">{user.name}</div>
+                                        <div className="text-xs text-slate-500">{user.email} • {user.role}</div>
+                                        <div className="text-xs text-slate-500">{user.institution}</div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        variant="danger" 
+                                        className="text-xs py-1.5 h-auto bg-white border border-rose-200 text-rose-600 hover:bg-rose-50"
+                                        onClick={() => onApproveUser(user.id, UserStatus.REJECTED)}
+                                    >
+                                        <X size={14} /> Reject
+                                    </Button>
+                                    <Button 
+                                        className="text-xs py-1.5 h-auto bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm"
+                                        onClick={() => onApproveUser(user.id, UserStatus.ACTIVE)}
+                                    >
+                                        <Check size={14} /> Approve
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-200">
                 <Search size={20} className="text-slate-400" />
@@ -316,6 +359,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <tr>
                       <th className="px-4 py-3">User</th>
                       <th className="px-4 py-3">Role</th>
+                      <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Institution/Dept</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
@@ -339,6 +383,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             'bg-emerald-100 text-emerald-700'
                           }`}>
                             {user.role}
+                          </span>
+                        </td>
+                         <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                            user.status === UserStatus.ACTIVE ? 'bg-emerald-50 text-emerald-600' :
+                            user.status === UserStatus.PENDING ? 'bg-amber-50 text-amber-600' :
+                            'bg-rose-50 text-rose-600'
+                          }`}>
+                            {user.status}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-600">
@@ -428,6 +481,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <h2 className="text-2xl font-bold text-slate-800">Admin Overview</h2>
               <p className="text-slate-500">System-wide statistics and activity.</p>
             </div>
+
+            {/* Pending Requests Alert on Dashboard */}
+            {stats.pendingUsers.length > 0 && (
+                 <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md shadow-sm flex items-start gap-3 cursor-pointer hover:bg-amber-100 transition-colors" onClick={() => setActiveTab('USERS')}>
+                     <AlertCircle className="text-amber-600 flex-shrink-0 mt-1" size={20} />
+                     <div>
+                         <h3 className="font-bold text-amber-800">Pending Approval Requests</h3>
+                         <p className="text-sm text-amber-700 mt-1">
+                             There are {stats.pendingUsers.length} supervisor account(s) waiting for approval. Click to manage.
+                         </p>
+                     </div>
+                 </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="p-6 bg-white border-l-4 border-l-indigo-500">
@@ -536,17 +602,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  const NavButton = ({ tab, label, icon: Icon }: { tab: 'DASHBOARD' | 'USERS' | 'RESOURCES' | 'SETTINGS', label: string, icon: any }) => (
+  const NavButton = ({ tab, label, icon: Icon, badgeCount }: { tab: 'DASHBOARD' | 'USERS' | 'RESOURCES' | 'SETTINGS', label: string, icon: any, badgeCount?: number }) => (
     <button 
       onClick={() => setActiveTab(tab)}
-      className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors rounded-lg md:rounded-none md:border-l-4 ${
+      className={`w-full flex items-center px-4 py-3 text-sm font-medium transition-colors rounded-lg md:rounded-none md:border-l-4 ${
           activeTab === tab 
           ? 'bg-indigo-50 text-indigo-700 md:border-indigo-600' 
           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 md:border-transparent'
       }`}
     >
-      <Icon size={18} />
-      <span className="whitespace-nowrap">{label}</span>
+      <div className="flex items-center gap-3 flex-1">
+          <Icon size={18} />
+          <span className="whitespace-nowrap">{label}</span>
+      </div>
+      {badgeCount !== undefined && badgeCount > 0 && (
+          <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {badgeCount}
+          </span>
+      )}
     </button>
   );
 
@@ -556,7 +629,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-6">
           <div className="flex overflow-x-auto md:flex-col p-2 md:p-0 gap-2 md:gap-0">
             <NavButton tab="DASHBOARD" label="Overview" icon={LayoutDashboard} />
-            <NavButton tab="USERS" label="User Management" icon={Users} />
+            <NavButton tab="USERS" label="User Management" icon={Users} badgeCount={stats.pendingUsers.length} />
             <NavButton tab="RESOURCES" label="Resources" icon={Briefcase} />
             <NavButton tab="SETTINGS" label="Settings" icon={Settings} />
           </div>

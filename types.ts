@@ -6,6 +6,12 @@ export enum Role {
   ADMIN = 'ADMIN'
 }
 
+export enum UserStatus {
+  ACTIVE = 'ACTIVE',
+  PENDING = 'PENDING',
+  REJECTED = 'REJECTED'
+}
+
 export enum TaskStatus {
   TODO = 'TODO',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -71,6 +77,7 @@ export interface User {
   email: string;
   password?: string; // Added password field
   role: Role;
+  status: UserStatus; // Added status field
   avatar: string;
   totalHoursRequired?: number;
   assignedSupervisorId?: string;
@@ -159,7 +166,7 @@ export interface Goal {
 export interface Resource {
   id: string;
   title: string;
-  type: 'PDF' | 'DOC' | 'LINK';
+  type: 'PDF' | 'DOC' | 'LINK' | 'ZIP' | 'IMAGE';
   url: string;
   uploadedBy: string;
   uploadDate: string;

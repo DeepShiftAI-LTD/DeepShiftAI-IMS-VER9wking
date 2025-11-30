@@ -1,5 +1,5 @@
 
-import { Role, User, Task, TaskStatus, TaskPriority, LogEntry, LogStatus, Report, ReportType, Goal, GoalStatus, Resource, FeedbackType, Evaluation, EvaluationType, Message, Meeting, Skill, SkillAssessment, Notification, NotificationType, Badge, UserBadge, LeaveRequest, LeaveType, LeaveStatus, SiteVisit, AttendanceException } from './types';
+import { Role, User, UserStatus, Task, TaskStatus, TaskPriority, LogEntry, LogStatus, Report, ReportType, Goal, GoalStatus, Resource, FeedbackType, Evaluation, EvaluationType, Message, Meeting, Skill, SkillAssessment, Notification, NotificationType, Badge, UserBadge, LeaveRequest, LeaveType, LeaveStatus, SiteVisit, AttendanceException } from './types';
 
 // Dynamic Date Helper
 const getRelativeDate = (days: number): string => {
@@ -31,6 +31,7 @@ export const MOCK_USERS: User[] = [
     email: 'alex@uni.edu',
     password: '123',
     role: Role.STUDENT,
+    status: UserStatus.ACTIVE,
     avatar: 'https://picsum.photos/seed/alex/200/200',
     totalHoursRequired: 120,
     assignedSupervisorId: 'u2',
@@ -51,6 +52,7 @@ export const MOCK_USERS: User[] = [
     email: 'sarah@corp.com',
     password: '123',
     role: Role.SUPERVISOR,
+    status: UserStatus.ACTIVE,
     avatar: 'https://picsum.photos/seed/sarah/200/200',
     institution: 'Tech Corp Inc.',
     department: 'Engineering Management',
@@ -62,6 +64,7 @@ export const MOCK_USERS: User[] = [
     email: 'mike@techcorp.com',
     password: '123',
     role: Role.ADMIN,
+    status: UserStatus.ACTIVE,
     avatar: 'https://picsum.photos/seed/mike/200/200',
     institution: 'Tech Corp Inc.',
     department: 'DevOps',

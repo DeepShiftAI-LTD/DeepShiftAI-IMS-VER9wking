@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, Role } from '../types';
 import { Button, Card } from './UI';
@@ -7,7 +6,7 @@ import { APP_NAME } from '../constants';
 
 interface AuthProps {
   onLogin: (email: string, password: string) => Promise<void>;
-  onRegister: (user: Omit<User, 'id' | 'role' | 'avatar' | 'assignedSupervisorId'>, password: string) => Promise<void>;
+  onRegister: (user: Omit<User, 'id' | 'avatar' | 'assignedSupervisorId' | 'status'>, password: string) => Promise<void>;
   onResetPassword: (email: string, newPassword: string) => boolean;
   getUserByEmail: (email: string) => Promise<User | null>;
   loginError?: string;
@@ -33,7 +32,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
       department: '',
       bio: '',
       skills: '',
-      hobbies: ''
+      hobbies: '',
+      role: Role.STUDENT
   });
 
   // Forgot Password State
@@ -66,8 +66,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
         institution: regForm.institution,
         department: regForm.department,
         bio: regForm.bio,
-        profileSkills: regForm.skills.split(',').map(s => s.trim()).filter(s => s),
-        hobbies: regForm.hobbies.split(',').map(s => s.trim()).filter(s => s),
+        profileSkills: regForm.skills ? regForm.skills.split(',').map(s => s.trim()).filter(s => s) : [],
+        hobbies: regForm.hobbies ? regForm.hobbies.split(',').map(s => s.trim()).filter(s => s) : [],
+        role: regForm.role,
         achievements: [],
         futureGoals: []
     }, regForm.password);
@@ -163,7 +164,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
                         </h2>
                         <p className="text-indigo-100 text-sm opacity-90">
                             {mode === 'LOGIN' ? 'Sign in to access your dashboard, log activities, and track your progress.' : 
-                             mode === 'REGISTER' ? 'Create your intern profile to start your journey with Deep Shift.' :
+                             mode === 'REGISTER' ? 'Create your profile to start managing internships with Deep Shift.' :
                              'Lost access? We can help you recover your account via email verification.'}
                         </p>
                     </div>
@@ -325,14 +326,33 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
 
                     {mode === 'REGISTER' && (
                         <form onSubmit={handleRegisterSubmit} className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                            {/* Role Selection */}
+                            <div className="flex p-1 bg-slate-100 rounded-lg mb-4">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setRegForm({...regForm, role: Role.STUDENT})} 
+                                    className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${regForm.role === Role.STUDENT ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Student
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setRegForm({...regForm, role: Role.SUPERVISOR})} 
+                                    className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${regForm.role === Role.SUPERVISOR ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Supervisor
+                                </button>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">First & Last Name</label>
                                     <input 
                                         type="text" 
                                         value={regForm.name}
                                         onChange={(e) => setRegForm({...regForm, name: e.target.value})}
                                         className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm"
+                                        placeholder="Jane Doe"
                                         required
                                     />
                                 </div>
@@ -343,6 +363,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
                                         value={regForm.phone}
                                         onChange={(e) => setRegForm({...regForm, phone: e.target.value})}
                                         className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm"
+                                        placeholder="+1 (555) 000-0000"
                                     />
                                 </div>
                             </div>
@@ -383,7 +404,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Institute / University</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">{regForm.role === Role.STUDENT ? 'Institute / University' : 'Company / Organization'}</label>
                                     <input 
                                         type="text" 
                                         value={regForm.institution}
@@ -392,7 +413,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Department</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">{regForm.role === Role.STUDENT ? 'Department' : 'Your Department'}</label>
                                     <input 
                                         type="text" 
                                         value={regForm.department}
@@ -402,41 +423,46 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, onResetPassword
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Bio</label>
-                                <textarea 
-                                    value={regForm.bio}
-                                    onChange={(e) => setRegForm({...regForm, bio: e.target.value})}
-                                    className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm resize-none h-16"
-                                    placeholder="Brief introduction..."
-                                />
-                            </div>
+                            {/* Student Only Fields */}
+                            {regForm.role === Role.STUDENT && (
+                                <>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Bio</label>
+                                        <textarea 
+                                            value={regForm.bio}
+                                            onChange={(e) => setRegForm({...regForm, bio: e.target.value})}
+                                            className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm resize-none h-16"
+                                            placeholder="Brief introduction..."
+                                        />
+                                    </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Skills (Comma separated)</label>
-                                    <input 
-                                        type="text" 
-                                        value={regForm.skills}
-                                        onChange={(e) => setRegForm({...regForm, skills: e.target.value})}
-                                        className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm"
-                                        placeholder="React, Java..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Hobbies (Comma separated)</label>
-                                    <input 
-                                        type="text" 
-                                        value={regForm.hobbies}
-                                        onChange={(e) => setRegForm({...regForm, hobbies: e.target.value})}
-                                        className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm"
-                                        placeholder="Reading, Gaming..."
-                                    />
-                                </div>
-                            </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">Skills (Comma separated)</label>
+                                            <input 
+                                                type="text" 
+                                                value={regForm.skills}
+                                                onChange={(e) => setRegForm({...regForm, skills: e.target.value})}
+                                                className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm"
+                                                placeholder="React, Java..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">Hobbies (Comma separated)</label>
+                                            <input 
+                                                type="text" 
+                                                value={regForm.hobbies}
+                                                onChange={(e) => setRegForm({...regForm, hobbies: e.target.value})}
+                                                className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 text-sm"
+                                                placeholder="Reading, Gaming..."
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             <Button type="submit" className="w-full justify-center py-2 mt-4" disabled={loading}>
-                                {loading ? <Loader2 size={18} className="animate-spin" /> : <><UserPlus size={18} /> Create Account</>}
+                                {loading ? <Loader2 size={18} className="animate-spin" /> : <><UserPlus size={18} /> {regForm.role === Role.SUPERVISOR ? 'Register as Supervisor' : 'Create Student Account'}</>}
                             </Button>
                         </form>
                     )}

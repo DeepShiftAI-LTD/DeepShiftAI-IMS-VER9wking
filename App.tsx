@@ -1,7 +1,9 @@
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { APP_NAME, MOCK_SKILLS, MOCK_BADGES } from './constants';
-import { Role, User, LogEntry, Task, TaskStatus, LogStatus, Report, Goal, Resource, TaskDeliverable, TaskFeedback, Evaluation, Message, Meeting, Skill, SkillAssessment, Notification, NotificationType, Badge, UserBadge, LeaveRequest, LeaveStatus, FeedbackType, SiteVisit, GoalStatus, AttendanceException, LeaveType } from './types';
+import { Role, User, LogEntry, Task, TaskStatus, LogStatus, Report, Goal, Resource, TaskDeliverable, TaskFeedback, Evaluation, Message, Meeting, Skill, SkillAssessment, Notification, NotificationType, Badge, UserBadge, LeaveRequest, LeaveStatus, FeedbackType, SiteVisit, GoalStatus, AttendanceException, LeaveType, UserStatus } from './types';
 import { StudentPortal } from './components/StudentPortal';
 import { SupervisorPortal } from './components/SupervisorPortal';
 import { AdminPortal } from './components/AdminPortal';
@@ -16,6 +18,7 @@ const mapUser = (d: any): User => ({
   name: d?.name ?? 'Unknown User',
   email: d?.email ?? '',
   role: (d?.role as Role) ?? Role.STUDENT,
+  status: (d?.status as UserStatus) ?? UserStatus.ACTIVE,
   avatar: d?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(d?.name || 'User')}&background=random`,
   totalHoursRequired: d?.total_hours_required ?? 120,
   assignedSupervisorId: d?.assigned_supervisor_id,
@@ -333,8 +336,17 @@ function App() {
                   const { data, error: profileError } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
                   
                   if (!profileError && data) {
-                      setCurrentUser(mapUser(data));
-                      setIsAuthenticated(true);
+                      const mappedUser = mapUser(data);
+                      
+                      // Check status for existing session
+                      if (mappedUser.role === Role.SUPERVISOR && mappedUser.status === UserStatus.PENDING) {
+                           await supabase.auth.signOut();
+                           setCurrentUser(null);
+                           setIsAuthenticated(false);
+                      } else {
+                           setCurrentUser(mappedUser);
+                           setIsAuthenticated(true);
+                      }
                   }
               }
               // Optimization: Do NOT await fetchUsers() here. It blocks the UI if DB is large/slow.
@@ -355,7 +367,17 @@ function App() {
               try {
                   const { data } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
                   if (data) {
-                      setCurrentUser(mapUser(data));
+                      const mappedUser = mapUser(data);
+                      
+                      if (mappedUser.role === Role.SUPERVISOR && mappedUser.status === UserStatus.PENDING) {
+                           await supabase.auth.signOut();
+                           setLoginError("Your supervisor account is pending Admin approval.");
+                           setCurrentUser(null);
+                           setIsAuthenticated(false);
+                           return;
+                      }
+
+                      setCurrentUser(mappedUser);
                       setIsAuthenticated(true);
                       // On explicit sign-in event, we can fetch users
                       await fetchUsers();
@@ -396,7 +418,7 @@ function App() {
 
           if (data.user) {
               // 1. Try to fetch profile by ID
-              const { data: profile, error: profileError } = await supabase
+              const { data: profileData, error: profileError } = await supabase
                   .from('users')
                   .select('*')
                   .eq('id', data.user.id)
@@ -409,8 +431,23 @@ function App() {
                   return;
               }
 
-              if (profile) {
-                setCurrentUser(mapUser(profile));
+              if (profileData) {
+                const profile = mapUser(profileData);
+                
+                // Check if account is PENDING approval
+                if (profile.role === Role.SUPERVISOR && profile.status === UserStatus.PENDING) {
+                    setLoginError("Your supervisor account is currently pending Admin approval.");
+                    await supabase.auth.signOut();
+                    return;
+                }
+                
+                if (profile.status === UserStatus.REJECTED) {
+                    setLoginError("Your account registration was rejected.");
+                    await supabase.auth.signOut();
+                    return;
+                }
+
+                setCurrentUser(profile);
                 setIsAuthenticated(true);
                 await fetchUsers();
               } else {
@@ -434,7 +471,15 @@ function App() {
                           .single();
 
                       if (linkedProfile) {
-                          setCurrentUser(mapUser(linkedProfile));
+                          const mappedLinked = mapUser(linkedProfile);
+                          
+                          if (mappedLinked.role === Role.SUPERVISOR && mappedLinked.status === UserStatus.PENDING) {
+                               setLoginError("Your supervisor account is pending Admin approval.");
+                               await supabase.auth.signOut();
+                               return;
+                          }
+
+                          setCurrentUser(mappedLinked);
                           setIsAuthenticated(true);
                           await fetchUsers();
                       } else {
@@ -451,6 +496,7 @@ function App() {
                           email: data.user.email!,
                           name: defaultName,
                           role: 'STUDENT',
+                          status: 'ACTIVE',
                           password: 'managed_by_supabase_auth',
                           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(defaultName)}&background=random`,
                           total_hours_required: 120,
@@ -500,7 +546,7 @@ function App() {
       }
   };
 
-  const handleRegister = async (userData: Omit<User, 'id' | 'role' | 'avatar' | 'assignedSupervisorId'>, password: string) => {
+  const handleRegister = async (userData: Omit<User, 'id' | 'avatar' | 'assignedSupervisorId' | 'status'>, password: string) => {
       setLoginError('');
       
       const { data, error: authError } = await supabase.auth.signUp({
@@ -514,11 +560,15 @@ function App() {
       }
 
       if (data.user) {
+          // Determine initial status based on role
+          const initialStatus = userData.role === Role.SUPERVISOR ? UserStatus.PENDING : UserStatus.ACTIVE;
+
           const dbUser = {
               id: data.user.id,
               email: userData.email,
               name: userData.name,
-              role: 'STUDENT',
+              role: userData.role,
+              status: initialStatus,
               password: 'managed_by_supabase_auth', 
               avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`,
               phone: userData.phone,
@@ -527,7 +577,7 @@ function App() {
               bio: userData.bio,
               hobbies: userData.hobbies || [],
               profile_skills: userData.profileSkills || [],
-              total_hours_required: 120,
+              total_hours_required: userData.role === Role.STUDENT ? 120 : undefined,
               achievements: [],
               future_goals: []
           };
@@ -545,29 +595,45 @@ function App() {
                         setLoginError('Account already exists but could not be linked: ' + updateError.message);
                    } else {
                         if (data.session) {
-                            const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
-                            if (profile) {
-                                setCurrentUser(mapUser(profile));
-                                setIsAuthenticated(true);
-                                await fetchUsers();
+                            // Only auto-login if not supervisor (pending)
+                            if (userData.role !== Role.SUPERVISOR) {
+                                const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+                                if (profile) {
+                                    setCurrentUser(mapUser(profile));
+                                    setIsAuthenticated(true);
+                                    await fetchUsers();
+                                }
+                            } else {
+                                alert('Registration successful! Your supervisor account is pending Admin approval.');
                             }
                         } else {
-                            alert('Account linked successfully! You can now log in.');
+                            if (userData.role === Role.SUPERVISOR) {
+                                alert('Registration successful! Your supervisor account is pending Admin approval.');
+                            } else {
+                                alert('Registration successful! You can now log in.');
+                            }
                         }
                    }
               } else {
                   setLoginError('Account created but profile setup failed: ' + dbError.message);
               }
           } else {
-              if (data.session) {
-                  const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
-                  if (profile) {
-                      setCurrentUser(mapUser(profile));
-                      setIsAuthenticated(true);
-                      await fetchUsers();
-                  }
+              if (userData.role === Role.SUPERVISOR) {
+                   alert('Registration successful! Your supervisor account is now pending Admin approval. You will not be able to login until approved.');
+                   // Ensure we don't auto login
+                   await supabase.auth.signOut();
+                   setIsAuthenticated(false);
               } else {
-                  alert('Registration successful! You can now log in.');
+                  if (data.session) {
+                      const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+                      if (profile) {
+                          setCurrentUser(mapUser(profile));
+                          setIsAuthenticated(true);
+                          await fetchUsers();
+                      }
+                  } else {
+                      alert('Registration successful! You can now log in.');
+                  }
               }
           }
       }
@@ -593,6 +659,16 @@ function App() {
           await supabase.auth.signOut();
       } catch (e) {
           console.error("Sign out error:", e);
+      }
+  };
+
+  const handleApproveUser = async (userId: string, status: UserStatus) => {
+      const { error } = await supabase.from('users').update({ status }).eq('id', userId);
+      if (!error) {
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+      } else {
+          console.error("Error updating user status:", error);
+          alert("Failed to update user status");
       }
   };
 
@@ -772,6 +848,7 @@ function App() {
           ...userData,
           id: `temp_${Date.now()}`,
           role: Role.STUDENT,
+          status: UserStatus.ACTIVE,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`,
           assignedSupervisorId: currentUser?.role === Role.SUPERVISOR ? currentUser.id : undefined
       };
@@ -790,7 +867,8 @@ function App() {
           profile_skills: updatedUser.profileSkills,
           achievements: updatedUser.achievements,
           future_goals: updatedUser.futureGoals,
-          role: updatedUser.role
+          role: updatedUser.role,
+          status: updatedUser.status
       }).eq('id', updatedUser.id);
 
       if (!error) {
@@ -800,7 +878,7 @@ function App() {
 
   // --- Admin User Management ---
 
-  const handleAddUser = async (user: Omit<User, 'id'>) => {
+  const handleAddUser = async (user: Omit<User, 'id' | 'status'>) => {
       const tempId = generateUUID();
       
       const payload = { 
@@ -808,6 +886,7 @@ function App() {
           email: user.email,
           name: user.name,
           role: user.role,
+          status: UserStatus.ACTIVE, // Admin added users are active by default
           avatar: user.avatar,
           phone: user.phone || null,
           institution: user.institution || null,
@@ -1211,6 +1290,7 @@ function App() {
             onUpdateUser={handleUpdateIntern}
             onDeleteUser={handleDeleteUser}
             onAddResource={handleAddResource}
+            onApproveUser={handleApproveUser}
           />
         ) : currentUser.role === Role.STUDENT ? (
             <StudentPortal 
