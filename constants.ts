@@ -1,6 +1,22 @@
 
 import { Role, User, Task, TaskStatus, TaskPriority, LogEntry, LogStatus, Report, ReportType, Goal, GoalStatus, Resource, FeedbackType, Evaluation, EvaluationType, Message, Meeting, Skill, SkillAssessment, Notification, NotificationType, Badge, UserBadge, LeaveRequest, LeaveType, LeaveStatus, SiteVisit, AttendanceException } from './types';
 
+// Dynamic Date Helper
+const getRelativeDate = (days: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    // Use local YYYY-MM-DD
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset*60*1000));
+    return localDate.toISOString().split('T')[0];
+};
+
+const getRelativeTime = (hours: number): string => {
+    const d = new Date();
+    d.setHours(d.getHours() + hours);
+    return d.toISOString();
+};
+
 // Company Coordinates (Updated: 0.32936393472140163, 32.614417541438584)
 export const COMPANY_LOCATION = {
     latitude: 0.32936393472140163,
@@ -18,6 +34,8 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://picsum.photos/seed/alex/200/200',
     totalHoursRequired: 120,
     assignedSupervisorId: 'u2',
+    internshipStartDate: getRelativeDate(-30), // Started 30 days ago
+    internshipEndDate: getRelativeDate(90),    // Ends in 90 days
     institution: 'Tech University',
     department: 'Computer Science',
     bio: 'Aspiring software engineer passionate about full-stack development and AI integration. eager to learn and contribute to real-world projects.',
@@ -60,17 +78,17 @@ export const MOCK_TASKS: Task[] = [
     assignedById: 'u2',
     status: TaskStatus.COMPLETED,
     priority: TaskPriority.HIGH,
-    dueDate: '2025-11-01',
-    createdAt: '2025-10-25',
+    dueDate: getRelativeDate(-5),
+    createdAt: getRelativeDate(-10),
     deliverable: {
       notes: 'Environment setup complete. Screenshot attached.',
       url: 'https://example.com/screenshot.png',
-      submittedAt: '2025-10-28T10:00:00Z'
+      submittedAt: getRelativeTime(-48)
     },
     feedback: {
         type: FeedbackType.PRAISE,
         comment: 'Excellent turnaround time. The documentation screenshot was very clear.',
-        givenAt: '2025-10-29T09:00:00Z'
+        givenAt: getRelativeTime(-24)
     }
   },
   {
@@ -81,8 +99,8 @@ export const MOCK_TASKS: Task[] = [
     assignedById: 'u2',
     status: TaskStatus.IN_PROGRESS,
     priority: TaskPriority.MEDIUM,
-    dueDate: '2025-11-25',
-    createdAt: '2025-11-20'
+    dueDate: getRelativeDate(5),
+    createdAt: getRelativeDate(-2)
   },
   {
     id: 't3',
@@ -92,8 +110,8 @@ export const MOCK_TASKS: Task[] = [
     assignedById: 'u2',
     status: TaskStatus.TODO,
     priority: TaskPriority.LOW,
-    dueDate: '2025-11-30',
-    createdAt: '2025-11-21'
+    dueDate: getRelativeDate(10),
+    createdAt: getRelativeDate(-1)
   },
   {
     id: 't4',
@@ -103,8 +121,8 @@ export const MOCK_TASKS: Task[] = [
     assignedById: 'u2',
     status: TaskStatus.TODO,
     priority: TaskPriority.HIGH,
-    dueDate: '2025-12-15',
-    createdAt: '2025-11-22'
+    dueDate: getRelativeDate(15),
+    createdAt: getRelativeDate(0)
   }
 ];
 
@@ -112,7 +130,7 @@ export const MOCK_LOGS: LogEntry[] = [
   {
     id: 'l1',
     studentId: 'u1',
-    date: '2025-11-20',
+    date: getRelativeDate(-2),
     hoursWorked: 6,
     activityDescription: 'Worked on the database schema. Researching best practices for normalization.',
     challenges: 'Had trouble understanding foreign key constraints in the legacy DB.',
@@ -122,7 +140,7 @@ export const MOCK_LOGS: LogEntry[] = [
   {
     id: 'l2',
     studentId: 'u1',
-    date: '2025-11-21',
+    date: getRelativeDate(-1),
     hoursWorked: 8,
     activityDescription: 'Completed the first draft of ERD. Started setting up the migration scripts.',
     status: LogStatus.PENDING
@@ -134,12 +152,12 @@ export const MOCK_REPORTS: Report[] = [
     id: 'r1',
     studentId: 'u1',
     type: ReportType.WEEKLY,
-    periodStart: '2025-11-14',
-    periodEnd: '2025-11-21',
+    periodStart: getRelativeDate(-7),
+    periodEnd: getRelativeDate(0),
     summary: 'Focused heavily on backend architecture. Completed environment setup and initial DB design.',
     keyLearnings: 'Learned about Prisma ORM and PostgreSQL specific indexing.',
     nextSteps: 'Start coding the API endpoints for User Auth.',
-    submittedAt: '2025-11-21T16:00:00Z'
+    submittedAt: getRelativeTime(-2)
   }
 ];
 
@@ -171,7 +189,7 @@ export const MOCK_RESOURCES: Resource[] = [
     type: 'PDF',
     url: '#',
     uploadedBy: 'u2',
-    uploadDate: '2025-10-01'
+    uploadDate: getRelativeDate(-30)
   },
   {
     id: 'res2',
@@ -179,7 +197,7 @@ export const MOCK_RESOURCES: Resource[] = [
     type: 'DOC',
     url: '#',
     uploadedBy: 'u2',
-    uploadDate: '2025-10-01'
+    uploadDate: getRelativeDate(-30)
   }
 ];
 
@@ -189,7 +207,7 @@ export const MOCK_EVALUATIONS: Evaluation[] = [
         studentId: 'u1',
         supervisorId: 'u2',
         type: EvaluationType.MID_TERM,
-        date: '2025-11-15',
+        date: getRelativeDate(-10),
         scores: [
             { category: 'Quality of Work', score: 4 },
             { category: 'Communication', score: 3 },
@@ -205,7 +223,7 @@ export const MOCK_MESSAGES: Message[] = [
     id: 'm1',
     senderId: 'u1',
     content: 'Hi Sarah, I had a question about the evaluation form.',
-    timestamp: '2025-11-21T09:00:00Z',
+    timestamp: getRelativeTime(-48),
     channel: 'DIRECT',
     relatedStudentId: 'u1'
   },
@@ -213,7 +231,7 @@ export const MOCK_MESSAGES: Message[] = [
     id: 'm2',
     senderId: 'u2',
     content: 'Sure Alex, happy to help. Let\'s discuss in our check-in.',
-    timestamp: '2025-11-21T09:15:00Z',
+    timestamp: getRelativeTime(-47.5),
     channel: 'DIRECT',
     relatedStudentId: 'u1'
   },
@@ -221,7 +239,7 @@ export const MOCK_MESSAGES: Message[] = [
     id: 'm3',
     senderId: 'u1',
     content: 'I have uploaded the final DB schema.',
-    timestamp: '2025-11-22T10:00:00Z',
+    timestamp: getRelativeTime(-24),
     channel: 'GROUP',
     relatedStudentId: 'u1'
   }
@@ -232,7 +250,7 @@ export const MOCK_MEETINGS: Meeting[] = [
     id: 'mt1',
     title: 'Weekly Check-in',
     organizerId: 'u2',
-    date: '2025-11-25',
+    date: getRelativeDate(2),
     time: '14:00',
     attendees: ['u1', 'u2'],
     link: 'https://meet.google.com/abc-defg-hij'
@@ -245,9 +263,9 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
         recipientId: 'ALL',
         senderId: 'u2',
         title: 'Office Closure Reminder',
-        message: 'The office will be closed this Thursday for Thanksgiving.',
+        message: 'The office will be closed this Thursday for company retreat.',
         type: NotificationType.ANNOUNCEMENT,
-        timestamp: '2025-11-24T08:00:00Z',
+        timestamp: getRelativeTime(-72),
         read: false
     },
     {
@@ -255,9 +273,9 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
         recipientId: 'u1',
         senderId: 'SYSTEM',
         title: 'Task Overdue',
-        message: 'The task "API Documentation" is now overdue.',
+        message: 'The task "API Documentation" is approaching deadline.',
         type: NotificationType.ALERT,
-        timestamp: '2025-12-01T09:00:00Z',
+        timestamp: getRelativeTime(0),
         read: false
     }
 ];
@@ -276,7 +294,7 @@ export const MOCK_SKILL_ASSESSMENTS: SkillAssessment[] = [
     studentId: 'u1',
     raterId: 'u1',
     role: Role.STUDENT,
-    date: '2025-10-01',
+    date: getRelativeDate(-30),
     ratings: [
       { skillId: 's1', score: 2 },
       { skillId: 's2', score: 1 },
@@ -290,7 +308,7 @@ export const MOCK_SKILL_ASSESSMENTS: SkillAssessment[] = [
     studentId: 'u1',
     raterId: 'u2',
     role: Role.SUPERVISOR,
-    date: '2025-10-05',
+    date: getRelativeDate(-28),
     ratings: [
       { skillId: 's1', score: 2 },
       { skillId: 's2', score: 2 },
@@ -304,7 +322,7 @@ export const MOCK_SKILL_ASSESSMENTS: SkillAssessment[] = [
     studentId: 'u1',
     raterId: 'u1',
     role: Role.STUDENT,
-    date: '2025-11-20',
+    date: getRelativeDate(-1),
     ratings: [
       { skillId: 's1', score: 4 },
       { skillId: 's2', score: 3 },
@@ -318,7 +336,7 @@ export const MOCK_SKILL_ASSESSMENTS: SkillAssessment[] = [
     studentId: 'u1',
     raterId: 'u2',
     role: Role.SUPERVISOR,
-    date: '2025-11-22',
+    date: getRelativeDate(0),
     ratings: [
       { skillId: 's1', score: 4 },
       { skillId: 's2', score: 3 },
@@ -365,16 +383,16 @@ export const MOCK_BADGES: Badge[] = [
 ];
 
 export const MOCK_USER_BADGES: UserBadge[] = [
-    { id: 'ub1', userId: 'u1', badgeId: 'b1', earnedAt: '2025-11-05T10:00:00Z' },
-    { id: 'ub2', userId: 'u1', badgeId: 'b4', earnedAt: '2025-11-15T14:30:00Z' }
+    { id: 'ub1', userId: 'u1', badgeId: 'b1', earnedAt: getRelativeDate(-10) },
+    { id: 'ub2', userId: 'u1', badgeId: 'b4', earnedAt: getRelativeDate(-5) }
 ];
 
 export const MOCK_LEAVE_REQUESTS: LeaveRequest[] = [
     {
         id: 'lr1',
         studentId: 'u1',
-        startDate: '2025-12-10',
-        endDate: '2025-12-10',
+        startDate: getRelativeDate(10),
+        endDate: getRelativeDate(10),
         type: LeaveType.SICK,
         reason: 'Dental appointment',
         status: LeaveStatus.PENDING
@@ -386,7 +404,7 @@ export const MOCK_SITE_VISITS: SiteVisit[] = [
         id: 'sv1',
         studentId: 'u1',
         visitorId: 'u2',
-        date: '2025-11-10',
+        date: getRelativeDate(-15),
         location: 'Tech Corp HQ, Floor 4',
         purpose: 'Monthly progress check-in',
         notes: 'Met with the company mentor. Intern has settled in well. Workspace is adequate.'
@@ -397,8 +415,8 @@ export const MOCK_ATTENDANCE_EXCEPTIONS: AttendanceException[] = [
     {
         id: 'ae1',
         studentId: 'ALL',
-        date: '2025-11-27',
-        reason: 'Thanksgiving',
+        date: getRelativeDate(20), // Future holiday
+        reason: 'Company Retreat',
         type: 'HOLIDAY'
     }
 ];

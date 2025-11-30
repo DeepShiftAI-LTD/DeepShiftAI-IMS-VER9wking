@@ -53,15 +53,17 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ studentI
     const exception = exceptions.find(e => (e.studentId === 'ALL' || e.studentId === studentId) && e.date === dateStr);
     
     const dayLogs = studentLogs.filter(l => l.date === dateStr);
-    const totalHours = dayLogs.reduce((sum, l) => sum + l.hoursWorked, 0);
     const hasLog = dayLogs.length > 0;
+    const totalHours = dayLogs.reduce((acc, log) => acc + log.hoursWorked, 0);
 
-    let status: 'present' | 'absent' | 'weekend' | 'future' | 'excused' | 'disabled' = 'absent';
+    let status: 'present' | 'absent' | 'weekend' | 'future' | 'excused' | 'holiday' | 'disabled' = 'absent';
 
     if (isOutOfRange) status = 'disabled';
     else if (isFuture) status = 'future';
     else if (hasLog) status = 'present';
-    else if (exception) status = 'excused';
+    else if (exception) {
+        status = exception.type === 'HOLIDAY' ? 'holiday' : 'excused';
+    }
     else if (isWeekend) status = 'weekend';
     // otherwise it remains 'absent' (past weekday with no logs)
 
@@ -71,6 +73,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ studentI
   // Generate grid cells
   const renderCalendarDays = () => {
     const days = [];
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
     // Empty cells for padding before 1st of month
     for (let i = 0; i < firstDayOfMonth; i++) {
@@ -84,6 +88,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ studentI
       let content = <>{day}</>;
       let cursorClass = interactive && status !== 'disabled' ? 'cursor-pointer hover:ring-2 hover:ring-indigo-400' : 'cursor-default';
       
+      const isToday = dateStr === todayStr;
+
       switch (status) {
         case 'present':
           bgClass = 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200 shadow-sm';
@@ -93,6 +99,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ studentI
           break;
         case 'excused':
           bgClass = 'bg-blue-100 text-blue-600 font-medium border border-blue-200';
+          break;
+        case 'holiday':
+          bgClass = 'bg-purple-100 text-purple-600 font-medium border border-purple-200';
           break;
         case 'weekend':
           bgClass = 'bg-slate-100 text-slate-400';
@@ -106,8 +115,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ studentI
           break;
       }
 
-      // Add indicator for exception
-      if (exception && status !== 'disabled') {
+      // Add indicator for exception if we want extra visual, but background color is now distinct
+      if (exception && status !== 'disabled' && status !== 'holiday' && status !== 'excused') {
+          // Fallback if for some reason it's present AND exception (e.g. worked on holiday)
           content = (
               <>
                 {day}
@@ -120,13 +130,15 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ studentI
         <div 
           key={day} 
           onClick={() => interactive && status !== 'disabled' && onDateClick && onDateClick(dateStr)}
-          className={`h-9 w-full rounded-md flex items-center justify-center text-xs transition-all duration-200 relative group ${bgClass} ${cursorClass}`}
+          className={`h-9 w-full rounded-md flex items-center justify-center text-xs transition-all duration-200 relative group ${bgClass} ${cursorClass} ${isToday ? 'ring-2 ring-indigo-600 z-10' : ''}`}
           title={
-             status === 'present' ? `${totalHours} Hours Logged` 
-             : status === 'excused' ? exception?.reason 
+             (isToday ? 'TODAY - ' : '') + 
+             (status === 'present' ? `${totalHours} Hours Logged` 
+             : status === 'excused' ? `Excused: ${exception?.reason}`
+             : status === 'holiday' ? `Holiday: ${exception?.reason}`
              : status === 'absent' ? 'Missing Log Entry' 
              : status === 'disabled' ? 'Outside Internship Period'
-             : ''
+             : '')
           }
         >
           {content}
@@ -216,11 +228,17 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ studentI
               <div className="w-2.5 h-2.5 bg-rose-100 border border-rose-200 rounded-sm"></div>
               <span className="text-slate-600">Missed</span>
           </div>
-           <div className="flex items-center gap-1.5" title="Excused or Holiday">
-              <div className="w-2.5 h-2.5 bg-blue-100 border border-blue-200 rounded-sm relative">
-                   <div className="absolute top-0 right-0 w-1 h-1 bg-blue-400 rounded-full"></div>
-              </div>
+           <div className="flex items-center gap-1.5" title="Excused Absence">
+              <div className="w-2.5 h-2.5 bg-blue-100 border border-blue-200 rounded-sm"></div>
               <span className="text-slate-600">Excused</span>
+          </div>
+          <div className="flex items-center gap-1.5" title="Public Holiday">
+              <div className="w-2.5 h-2.5 bg-purple-100 border border-purple-200 rounded-sm"></div>
+              <span className="text-slate-600">Holiday</span>
+          </div>
+           <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 border-2 border-indigo-600 rounded-sm bg-transparent"></div>
+              <span className="text-slate-600">Today</span>
           </div>
       </div>
     </Card>

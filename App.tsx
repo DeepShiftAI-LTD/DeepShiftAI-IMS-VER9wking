@@ -337,8 +337,8 @@ function App() {
                       setIsAuthenticated(true);
                   }
               }
-
-              if (mounted) await fetchUsers();
+              // Optimization: Do NOT await fetchUsers() here. It blocks the UI if DB is large/slow.
+              // fetchUsers will be called by the useEffect dependent on isAuthenticated below.
           } catch (err) {
               console.error("Auth init error:", err);
           } finally {
@@ -357,6 +357,7 @@ function App() {
                   if (data) {
                       setCurrentUser(mapUser(data));
                       setIsAuthenticated(true);
+                      // On explicit sign-in event, we can fetch users
                       await fetchUsers();
                   }
               } catch (e) {
@@ -377,6 +378,7 @@ function App() {
   // Fetch Data when authenticated
   useEffect(() => {
     if (isAuthenticated) {
+        fetchUsers(); // Fetch users in background when authenticated
         fetchAllData();
     }
   }, [isAuthenticated]);

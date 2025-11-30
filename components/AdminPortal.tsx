@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { User, LogEntry, Role, Task, Resource } from '../types';
 import { Card, Button, StatusBadge } from './UI';
@@ -115,7 +116,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         institution: '',
         department: '',
         phone: '',
-        internshipStartDate: new Date().toISOString().split('T')[0],
+        internshipStartDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0],
         internshipEndDate: '',
         password: 'password123'
       });

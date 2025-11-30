@@ -41,6 +41,12 @@ interface StudentPortalProps {
 
 type Tab = 'DASHBOARD' | 'REPORTS' | 'PLAN' | 'SKILLS' | 'RESOURCES' | 'EVALUATIONS' | 'MESSAGES' | 'ACHIEVEMENTS' | 'PROFILE' | 'LEAVE' | 'MEETINGS' | 'LOGBOOK' | 'SITE_VISITS' | 'PERFORMANCE' | 'ATTENDANCE';
 
+// Helper to get local date string (YYYY-MM-DD)
+const getLocalDate = () => {
+    const d = new Date();
+    return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+};
+
 export const StudentPortal: React.FC<StudentPortalProps> = ({ 
   user, users, logs, tasks, reports, goals, resources, evaluations, messages, meetings, skills, skillAssessments, badges, userBadges, leaveRequests, siteVisits,
   onAddLog, onUpdateTaskStatus, onAddReport, onUpdateGoal, onSubmitDeliverable, onSendMessage, onAddSkillAssessment, onUpdateProfile, onAddLeaveRequest
@@ -53,7 +59,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDeliverableModalOpen, setIsDeliverableModalOpen] = useState(false);
   
-  const [newLog, setNewLog] = useState({ date: new Date().toISOString().split('T')[0], hoursWorked: 8, activityDescription: '', challenges: '' });
+  const [newLog, setNewLog] = useState({ date: getLocalDate(), hoursWorked: 8, activityDescription: '', challenges: '' });
   const [newReport, setNewReport] = useState({ type: ReportType.WEEKLY, periodStart: '', periodEnd: '', summary: '', keyLearnings: '', nextSteps: '' });
   const [isGenerating, setIsGenerating] = useState(false);
   
@@ -206,7 +212,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
       const hours = parseFloat((elapsedTime / 3600).toFixed(2));
       // Pre-fill log modal with worked hours
       setNewLog({
-          date: new Date().toISOString().split('T')[0],
+          date: getLocalDate(),
           hoursWorked: hours,
           activityDescription: '',
           challenges: ''
@@ -227,7 +233,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
     startOfWeek.setHours(0,0,0,0);
 
     return logs
-        .filter(l => new Date(l.date) >= startOfWeek)
+        .filter(l => new Date(l.date + 'T00:00:00') >= startOfWeek)
         .reduce((acc, l) => acc + l.hoursWorked, 0);
   };
   
@@ -270,7 +276,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
       // Only prompt after 3 PM (15:00)
       if (hour < 15) return false;
       
-      const todayStr = now.toISOString().split('T')[0];
+      const todayStr = getLocalDate();
       const hasLoggedToday = myLogs.some(l => l.date === todayStr);
       
       return !hasLoggedToday;
@@ -294,7 +300,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
       challenges: newLog.challenges
     });
     setIsLogModalOpen(false);
-    setNewLog({ date: new Date().toISOString().split('T')[0], hoursWorked: 8, activityDescription: '', challenges: '' });
+    setNewLog({ date: getLocalDate(), hoursWorked: 8, activityDescription: '', challenges: '' });
   };
 
   const handleSubmitReport = (e: React.FormEvent) => {
@@ -1491,7 +1497,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
                                 <input 
                                     type="date" 
-                                    max={new Date().toISOString().split('T')[0]}
+                                    max={getLocalDate()}
                                     value={newLog.date}
                                     onChange={(e) => setNewLog({...newLog, date: e.target.value})}
                                     className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"

@@ -966,7 +966,25 @@ export const SupervisorPortal: React.FC<SupervisorPortalProps> = ({
                                              />
                                          </div>
                                          <div className="lg:col-span-1">
-                                            {/* ... */}
+                                            <Card className="p-6">
+                                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                                    <Settings size={18} className="text-indigo-600" /> Attendance Settings
+                                                </h3>
+                                                <p className="text-sm text-slate-600 mb-4">
+                                                    Click on a date in the calendar to mark it as an <strong>Excused Absence</strong> or a <strong>Holiday</strong>.
+                                                    This ensures accurate attendance rate calculations.
+                                                </p>
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2 text-sm text-slate-700">
+                                                        <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                                                        <strong>Excused:</strong> Sick leave, university events, etc.
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-sm text-slate-700">
+                                                        <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                                                        <strong>Holiday:</strong> Public holidays or company closures.
+                                                    </div>
+                                                </div>
+                                            </Card>
                                          </div>
                                      </div>
                                 </div>
@@ -1426,9 +1444,32 @@ export const SupervisorPortal: React.FC<SupervisorPortalProps> = ({
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                  {/* ... */}
                 <Card className="w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
-                    {/* ... */}
+                     <h2 className="text-xl font-bold text-slate-800 mb-2">Manage Attendance Status</h2>
+                     <p className="text-sm text-slate-500 mb-4">
+                         For {new Date(selectedAttendanceDate).toLocaleDateString()}
+                     </p>
                     <form onSubmit={handleAttendanceSubmit} className="space-y-4">
-                        {/* ... */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Status Type</label>
+                            <select 
+                                value={attendanceForm.type}
+                                onChange={(e) => setAttendanceForm({...attendanceForm, type: e.target.value as any})}
+                                className="w-full p-2 border border-slate-300 rounded outline-none"
+                            >
+                                <option value="EXCUSED">Excused Absence (Sick, etc.)</option>
+                                <option value="HOLIDAY">Public Holiday</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Reason / Note</label>
+                            <textarea 
+                                value={attendanceForm.reason}
+                                onChange={(e) => setAttendanceForm({...attendanceForm, reason: e.target.value})}
+                                className="w-full p-2 border border-slate-300 rounded outline-none h-24 resize-none"
+                                placeholder="Reason for exception..."
+                                required
+                            />
+                        </div>
                         <div className="flex justify-between items-center pt-2">
                             <button 
                                 type="button" 
